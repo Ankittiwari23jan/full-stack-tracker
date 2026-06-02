@@ -1382,6 +1382,12 @@ function renderStats() {
     overallPercentageEl.innerText = `${percentage}%`;
     overallProgressBarEl.style.width = `${percentage}%`;
     completedFractionEl.innerText = `${completed} / ${total} Tasks Completed`;
+
+    // Sticky Top Page Progress Bar
+    const topProgressBar = document.getElementById("top-progress-bar");
+    if (topProgressBar) {
+        topProgressBar.style.width = `${percentage}%`;
+    }
 }
 
 // Render counters beside sidebar tabs
