@@ -1,12 +1,38 @@
 // KVdb Cloud Sync Configuration
 const BUCKET_ID = 'CJj5pPqZHRWWQrt9Gr32N3';
-let bucket = null;
 
-function getBucket() {
-    if (!bucket && typeof KVdb !== "undefined") {
-        bucket = KVdb.bucket(BUCKET_ID);
-    }
-    return bucket;
+// Direct, cache-busting GET to retrieve task status from cloud
+function cloudGet(code) {
+    return fetch(`https://kvdb.io/${BUCKET_ID}/${code}?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+            'Accept': 'application/json'
+        }
+    }).then(res => {
+        if (res.status === 404) {
+            throw new Error("404 - Not Found");
+        }
+        if (!res.ok) {
+            throw new Error(`${res.status} - ${res.statusText}`);
+        }
+        return res.text();
+    });
+}
+
+// Direct PUT to save task status to cloud
+function cloudSet(code, dataString) {
+    return fetch(`https://kvdb.io/${BUCKET_ID}/${code}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: dataString
+    }).then(res => {
+        if (!res.ok) {
+            throw new Error(`${res.status} - ${res.statusText}`);
+        }
+        return res.text();
+    });
 }
 
 // Initial data mapping containing all fCC and custom Full Stack tasks
@@ -1243,34 +1269,29 @@ function setupEventListeners() {
                 inputSyncCode.value = "";
                 
                 // Immediately pull from cloud
-                const b = getBucket();
-                if (b) {
-                    b.get(code).then(cloudData => {
-                        if (cloudData) {
-                            const cloudTasks = JSON.parse(cloudData);
-                            if (Array.isArray(cloudTasks) && cloudTasks.length > 0) {
-                                tasks = cloudTasks;
-                                localStorage.setItem("full_stack_tasks", JSON.stringify(tasks));
-                                renderApp();
-                                showToast("Device successfully linked and synced! ☁️", "Completed");
-                            }
-                        } else {
-                            saveTasksToCloud();
-                            showToast("New device linked. Initializing cloud progress...", "Completed");
+                cloudGet(code).then(cloudData => {
+                    if (cloudData) {
+                        const cloudTasks = JSON.parse(cloudData);
+                        if (Array.isArray(cloudTasks) && cloudTasks.length > 0) {
+                            tasks = cloudTasks;
+                            localStorage.setItem("full_stack_tasks", JSON.stringify(tasks));
+                            renderApp();
+                            showToast("Device successfully linked and synced! ☁️", "Completed");
                         }
-                    }).catch(err => {
-                        // 404 means the code is new/unused. Initialize it by uploading our current tasks list!
-                        if (err && (err.message === "404 - Not Found" || String(err).includes("404"))) {
-                            saveTasksToCloud();
-                            showToast("New device linked. Initializing cloud progress...", "Completed");
-                        } else {
-                            alert("Failed to connect to cloud. Please verify your Sync Code.");
-                            console.error("Link error:", err);
-                        }
-                    });
-                } else {
-                    alert("Cloud service is currently unavailable. Please try again later.");
-                }
+                    } else {
+                        saveTasksToCloud();
+                        showToast("New device linked. Initializing cloud progress...", "Completed");
+                    }
+                }).catch(err => {
+                    // 404 means the code is new/unused. Initialize it by uploading our current tasks list!
+                    if (err && (err.message === "404 - Not Found" || String(err).includes("404"))) {
+                        saveTasksToCloud();
+                        showToast("New device linked. Initializing cloud progress...", "Completed");
+                    } else {
+                        alert("Failed to connect to cloud. Please verify your Sync Code.");
+                        console.error("Link error:", err);
+                    }
+                });
             }
         });
     }
@@ -1292,9 +1313,8 @@ function initSyncCode() {
 
 function saveTasksToCloud() {
     const syncCode = localStorage.getItem("tracker_sync_code");
-    const b = getBucket();
-    if (syncCode && b) {
-        b.set(syncCode, JSON.stringify(tasks)).catch(err => {
+    if (syncCode) {
+        cloudSet(syncCode, JSON.stringify(tasks)).catch(err => {
             console.error("Cloud sync save error:", err);
         });
     }
@@ -1302,9 +1322,8 @@ function saveTasksToCloud() {
 
 function loadTasksFromCloud(forceToast = false) {
     const syncCode = localStorage.getItem("tracker_sync_code");
-    const b = getBucket();
-    if (syncCode && b) {
-        b.get(syncCode).then(cloudData => {
+    if (syncCode) {
+        cloudGet(syncCode).then(cloudData => {
             if (cloudData) {
                 const cloudTasks = JSON.parse(cloudData);
                 if (Array.isArray(cloudTasks) && cloudTasks.length > 0) {
