@@ -1,5 +1,5 @@
 // KVdb Cloud Sync Configuration
-const BUCKET_ID = 'LE9C3Z3vHZ3y2KSB5248vs';
+const BUCKET_ID = 'CJj5pPqZHRWWQrt9Gr32N3';
 let bucket = null;
 
 function getBucket() {
