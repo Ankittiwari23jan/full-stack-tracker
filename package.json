@@ -1,0 +1,8 @@
+{
+  "name": "full-stack-learning-tracker",
+  "version": "1.0.0",
+  "description": "Interactive browser-based tracker for Full Stack Learning journey.",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
