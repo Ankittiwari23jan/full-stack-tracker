@@ -1259,7 +1259,14 @@ function setupEventListeners() {
                             showToast("New device linked. Initializing cloud progress...", "Completed");
                         }
                     }).catch(err => {
-                        alert("Failed to connect to cloud. Please verify your Sync Code.");
+                        // 404 means the code is new/unused. Initialize it by uploading our current tasks list!
+                        if (err && (err.message === "404 - Not Found" || String(err).includes("404"))) {
+                            saveTasksToCloud();
+                            showToast("New device linked. Initializing cloud progress...", "Completed");
+                        } else {
+                            alert("Failed to connect to cloud. Please verify your Sync Code.");
+                            console.error("Link error:", err);
+                        }
                     });
                 } else {
                     alert("Cloud service is currently unavailable. Please try again later.");
@@ -1315,7 +1322,12 @@ function loadTasksFromCloud(forceToast = false) {
                 saveTasksToCloud();
             }
         }).catch(err => {
-            console.error("Cloud sync load error:", err);
+            // 404 means the code is new. Initialize the cloud storage bucket key with our default tasks list!
+            if (err && (err.message === "404 - Not Found" || String(err).includes("404"))) {
+                saveTasksToCloud();
+            } else {
+                console.error("Cloud sync load error:", err);
+            }
         });
     }
 }
